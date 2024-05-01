@@ -7,8 +7,9 @@ export default function App() {
 
   return (
     <div>
-      GOAT STATE - {time < 10000 && time} -{' '}
+      GOAT STATE - {time === 0 ? 'Click Toggle To Start' : time > 10000 ? 'Loading...' : time + 'ms'} -{' '}
       <button
+        className='bg-red-500 p-1 text-white rounded-md my-2'
         onClick={() => {
           setState(!state)
           setTime(Date.now())
