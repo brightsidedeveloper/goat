@@ -11,7 +11,7 @@ type TemplJoint interface {
 	Render(context.Context, io.Writer) error
 }
 
-func HTML(j TemplJoint, c context.Context) string {
+func HTML(j TemplJoint) string {
 	return HTMLWithContext(j, context.Background())
 }
 
