@@ -1,4 +1,4 @@
-package router
+package goatRouter
 
 import (
 	"strings"
