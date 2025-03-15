@@ -42,8 +42,10 @@ func (r *Router) Navigate(path string) {
 		if !strings.Contains(routePattern, ":") {
 			continue
 		}
+
 		patternParts := strings.Split(routePattern, "/")
 		pathParts := strings.Split(cleanPath, "/")
+
 		if len(patternParts) != len(pathParts) {
 			continue
 		}
@@ -52,13 +54,12 @@ func (r *Router) Navigate(path string) {
 		matches := true
 
 		for i, patternPart := range patternParts {
-			if patternPart != pathParts[i] {
-				matches = false
-				break
-			}
 			if strings.HasPrefix(patternPart, ":") {
 				paramName := strings.TrimPrefix(patternPart, ":")
 				params[paramName] = pathParts[i]
+			} else if patternPart != pathParts[i] {
+				matches = false
+				break
 			}
 		}
 
