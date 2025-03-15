@@ -30,16 +30,40 @@ func Log(args ...any) {
 	js.Global().Get("console").Call("log", args...)
 }
 
-func RenderRoot(html string) {
+func RenderRootHTML(html string) {
 	doc := js.Global().Get("document")
 	output := doc.Call("getElementById", "root")
 	output.Set("innerHTML", html)
 }
 
-func Render(id string, html string) {
+func RenderRoot(j TemplJoint) {
+	doc := js.Global().Get("document")
+	output := doc.Call("getElementById", "root")
+	output.Set("innerHTML", HTML(j))
+}
+
+func RenderRootWithContext(j TemplJoint, ctx context.Context) {
+	doc := js.Global().Get("document")
+	output := doc.Call("getElementById", "root")
+	output.Set("innerHTML", HTMLWithContext(j, ctx))
+}
+
+func RenderHTML(id string, html string) {
 	doc := js.Global().Get("document")
 	output := doc.Call("getElementById", id)
 	output.Set("outerHTML", html)
+}
+
+func Render(id string, j TemplJoint) {
+	doc := js.Global().Get("document")
+	output := doc.Call("getElementById", id)
+	output.Set("outerHTML", HTML(j))
+}
+
+func RenderWithContext(id string, j TemplJoint, ctx context.Context) {
+	doc := js.Global().Get("document")
+	output := doc.Call("getElementById", id)
+	output.Set("outerHTML", HTMLWithContext(j, ctx))
 }
 
 func JSFunc(name string, f func(this js.Value, args []js.Value) any) {
