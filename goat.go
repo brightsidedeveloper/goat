@@ -12,6 +12,10 @@ type TemplJoint interface {
 }
 
 func HTML(j TemplJoint, c context.Context) string {
+	return HTMLWithContext(j, context.Background())
+}
+
+func HTMLWithContext(j TemplJoint, c context.Context) string {
 	var buf bytes.Buffer
 	err := j.Render(c, &buf)
 	if err != nil {
