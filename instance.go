@@ -6,8 +6,6 @@ import (
 	"sync"
 	"syscall/js"
 	"time"
-
-	"github.com/a-h/templ"
 )
 
 type ComponentInstance struct {
@@ -22,8 +20,7 @@ type componentInstanceKeyType struct{}
 
 var componentInstanceKey = componentInstanceKeyType{}
 
-// GetComponentInstance retrieves the ComponentInstance from the context.
-func getInstance(ctx context.Context) *ComponentInstance {
+func getInstanceFromContext(ctx context.Context) *ComponentInstance {
 	if ci, ok := ctx.Value(componentInstanceKey).(*ComponentInstance); ok {
 		return ci
 	}
@@ -31,7 +28,7 @@ func getInstance(ctx context.Context) *ComponentInstance {
 }
 
 func UseState[T any](ctx context.Context, initialValue T) (func() T, func(T)) {
-	ci := getInstance(ctx)
+	ci := getInstanceFromContext(ctx)
 	ci.mu.Lock()
 	defer ci.mu.Unlock()
 
@@ -62,8 +59,8 @@ func UseState[T any](ctx context.Context, initialValue T) (func() T, func(T)) {
 	return getState, setState
 }
 
-func UseCallback(ctx context.Context, f func(this js.Value, args []js.Value) any) func(args ...any) templ.ComponentScript {
-	ci := getInstance(ctx)
+func UseCallback(ctx context.Context, f func(this js.Value, args []js.Value) any) func(js.Value, []js.Value) any {
+	ci := getInstanceFromContext(ctx)
 	ci.mu.Lock()
 	defer ci.mu.Unlock()
 
@@ -78,17 +75,11 @@ func UseCallback(ctx context.Context, f func(this js.Value, args []js.Value) any
 	js.Global().Set(name, js.FuncOf(f))
 	ci.callbacks[callbackIndex] = name
 
-	return func(args ...any) templ.ComponentScript {
-		jsArgs := make([]js.Value, len(args))
-		for i, arg := range args {
-			jsArgs[i] = js.ValueOf(arg)
-		}
-		return templ.JSFuncCall(name, jsArgs)
-	}
+	return f
 }
 
 func UseEffect(ctx context.Context, effect func()) {
-	ci := getInstance(ctx)
+	ci := getInstanceFromContext(ctx)
 	ci.mu.Lock()
 	defer ci.mu.Unlock()
 
