@@ -11,7 +11,7 @@ type Renderer struct {
 	comp     Component
 	props    any
 	id       string
-	vdom     VNode
+	vdom     GoatNode
 	mu       sync.Mutex
 }
 
@@ -38,44 +38,45 @@ func (r *Renderer) Render() {
 	r.instance.Reset()
 	ctx := context.WithValue(context.Background(), componentInstanceKey, r.instance)
 	ctx = context.WithValue(ctx, propsKey, r.props)
-	newVdom := r.comp.Render(ctx, r.props)
+	newVdom := r.comp(ctx, r.props)
 	r.updateDOM(newVdom)
-	r.vdom = newVdom
 }
 
-func (r *Renderer) updateDOM(newVdom VNode) {
+func (r *Renderer) updateDOM(newVdom GoatNode) {
 	doc := js.Global().Get("document")
 	container := doc.Call("getElementById", r.id)
+	if !container.Truthy() {
+		return
+	}
+
 	if !r.vdom.DOMNode.Truthy() {
-		// Initial render
 		r.vdom = createDOM(newVdom, doc)
 		container.Call("appendChild", r.vdom.DOMNode)
 	} else {
-		// Diff and patch
-		diffAndPatch(r.vdom, newVdom, r.vdom.DOMNode, doc)
+		diffAndPatch(&r.vdom, &newVdom, container, doc)
 	}
 }
 
-func createDOM(v VNode, doc js.Value) VNode {
+func createDOM(v GoatNode, doc js.Value) GoatNode {
 	var node js.Value
-	if v.Tag == "" {
+	if v.Tag == "" && v.Text != "" && len(v.Children) == 0 {
 		node = doc.Call("createTextNode", v.Text)
-	} else {
+	} else if v.Tag != "" {
 		node = doc.Call("createElement", v.Tag)
 		for key, value := range v.Attrs {
 			node.Call("setAttribute", key, value)
 		}
 		for event, handler := range v.Events {
-			node.Call("addEventListener", event, js.FuncOf(handler))
+			node.Call("addEventListener", event, handler)
 		}
-		children := make([]VNode, len(v.Children))
+		children := make([]GoatNode, len(v.Children))
 		for i, child := range v.Children {
 			childNode := createDOM(child, doc)
 			node.Call("appendChild", childNode.DOMNode)
 			children[i] = childNode
 		}
 		v.Children = children
-		if v.Text != "" {
+		if len(v.Children) == 0 && v.Text != "" {
 			node.Set("textContent", v.Text)
 		}
 	}
@@ -83,68 +84,65 @@ func createDOM(v VNode, doc js.Value) VNode {
 	return v
 }
 
-func diffAndPatch(oldVdom, newVdom VNode, parent js.Value, doc js.Value) {
-	if oldVdom.Tag != newVdom.Tag || oldVdom.Text != newVdom.Text {
-		// Replace node if tag or text differs
-		newNode := createDOM(newVdom, doc)
-		parent.Call("replaceChild", newNode.DOMNode, oldVdom.DOMNode)
-		oldVdom.DOMNode = newNode.DOMNode
+func diffAndPatch(oldVdom, newVdom *GoatNode, parent js.Value, doc js.Value) {
+	if !parent.Truthy() {
 		return
 	}
 
-	// Update attributes
-	for key, value := range newVdom.Attrs {
-		if oldVdom.Attrs[key] != value {
-			oldVdom.DOMNode.Call("setAttribute", key, value)
-		}
-	}
-	for key := range oldVdom.Attrs {
-		if _, exists := newVdom.Attrs[key]; !exists {
-			oldVdom.DOMNode.Call("removeAttribute", key)
-		}
-	}
-
-	// Update Events
-	for event, handler := range newVdom.Events {
-		if oldHandler, exists := oldVdom.Events[event]; exists {
-			oldVdom.DOMNode.Call("removeEventListener", event, js.FuncOf(oldHandler))
-		}
-		oldVdom.DOMNode.Call("addEventListener", event, js.FuncOf(handler))
-	}
-	for event := range oldVdom.Events {
-		if _, exists := newVdom.Events[event]; !exists {
-			oldVdom.DOMNode.Call("removeEventListener", event, js.FuncOf(oldVdom.Events[event]))
-		}
-	}
-
-	// Update children
-	maxLen := len(oldVdom.Children)
-	if len(newVdom.Children) > maxLen {
-		maxLen = len(newVdom.Children)
-	}
-	for i := 0; i < maxLen; i++ {
-		if i >= len(oldVdom.Children) {
-			// Add new child
-			newChild := createDOM(newVdom.Children[i], doc)
-			oldVdom.DOMNode.Call("appendChild", newChild.DOMNode)
-			oldVdom.Children = append(oldVdom.Children, newChild)
-		} else if i >= len(newVdom.Children) {
-			// Remove excess child
-			oldVdom.DOMNode.Call("removeChild", oldVdom.Children[i].DOMNode)
-			oldVdom.Children = oldVdom.Children[:i]
-			break
+	if oldVdom.Tag != newVdom.Tag || (oldVdom.Tag == "" && oldVdom.Text != newVdom.Text) {
+		newNode := createDOM(*newVdom, doc)
+		if !oldVdom.DOMNode.Truthy() {
+			parent.Call("appendChild", newNode.DOMNode)
 		} else {
-			// Diff existing child
-			diffAndPatch(oldVdom.Children[i], newVdom.Children[i], oldVdom.DOMNode, doc)
+			parent.Call("replaceChild", newNode.DOMNode, oldVdom.DOMNode)
+		}
+		*oldVdom = newNode // Replace entire node, including Text
+		return
+	}
+
+	if oldVdom.Tag != "" {
+		if len(oldVdom.Children) == 0 && oldVdom.Text != newVdom.Text {
+			oldVdom.DOMNode.Set("textContent", newVdom.Text)
+			oldVdom.Text = newVdom.Text // Sync Text
+		}
+
+		for key, value := range newVdom.Attrs {
+			if oldVdom.Attrs[key] != value {
+				oldVdom.DOMNode.Call("setAttribute", key, value)
+			}
+		}
+		for key := range oldVdom.Attrs {
+			if _, exists := newVdom.Attrs[key]; !exists {
+				oldVdom.DOMNode.Call("removeAttribute", key)
+			}
+		}
+		oldVdom.Attrs = newVdom.Attrs // Sync Attrs
+
+		for event, oldHandler := range oldVdom.Events {
+			oldVdom.DOMNode.Call("removeEventListener", event, oldHandler)
+		}
+		for event, handler := range newVdom.Events {
+			oldVdom.DOMNode.Call("addEventListener", event, handler)
+			oldVdom.Events[event] = handler
+		}
+		oldVdom.Events = newVdom.Events // Sync Events
+
+		oldLen := len(oldVdom.Children)
+		newLen := len(newVdom.Children)
+		for i := 0; i < oldLen || i < newLen; i++ {
+			if i >= oldLen && i < newLen {
+				newChild := createDOM(newVdom.Children[i], doc)
+				oldVdom.DOMNode.Call("appendChild", newChild.DOMNode)
+				oldVdom.Children = append(oldVdom.Children, newChild)
+			} else if i < oldLen && i >= newLen {
+				oldVdom.DOMNode.Call("removeChild", oldVdom.Children[i].DOMNode)
+				oldVdom.Children = oldVdom.Children[:i]
+				break
+			} else {
+				diffAndPatch(&oldVdom.Children[i], &newVdom.Children[i], oldVdom.DOMNode, doc)
+			}
 		}
 	}
-}
-
-func vdomToHTML(v VNode) string {
-	if v.Text != "" {
-		return v.Text
-	}
-	return "<div>" + v.Text + "</div>" // Placeholder
 }
 
 type propsKeyType struct{}

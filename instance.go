@@ -2,15 +2,14 @@ package goat
 
 import (
 	"context"
-	"fmt"
 	"sync"
 	"syscall/js"
-	"time"
 )
 
 type ComponentInstance struct {
 	states     map[int]any
 	callbacks  map[int]string
+	jsFuncs    map[int]js.Func
 	stateOrder []int
 	callIndex  int
 	mu         sync.Mutex
@@ -57,34 +56,6 @@ func UseState[T any](ctx context.Context, initialValue T) (func() T, func(T)) {
 	}
 
 	return getState, setState
-}
-
-func UseCallback(ctx context.Context, f func(this js.Value, args []js.Value) any) func(js.Value, []js.Value) any {
-	ci := getInstanceFromContext(ctx)
-	ci.mu.Lock()
-	defer ci.mu.Unlock()
-
-	callbackIndex := ci.callIndex
-	ci.callIndex++
-
-	if oldName, exists := ci.callbacks[callbackIndex]; exists {
-		js.Global().Delete(oldName)
-	}
-
-	name := fmt.Sprintf("fn%d_%d", time.Now().UnixNano(), callbackIndex)
-	js.Global().Set(name, js.FuncOf(f))
-	ci.callbacks[callbackIndex] = name
-
-	return f
-}
-
-func UseEffect(ctx context.Context, effect func()) {
-	ci := getInstanceFromContext(ctx)
-	ci.mu.Lock()
-	defer ci.mu.Unlock()
-
-	// TODO: Queue this to fire after the re-render
-	effect()
 }
 
 func (ci *ComponentInstance) Reset() {

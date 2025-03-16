@@ -2,17 +2,17 @@ package goat
 
 import "syscall/js"
 
-type VNode struct {
+type GoatNode struct {
 	Tag      string
 	Attrs    map[string]string
-	Events   map[string]func(js.Value, []js.Value) any // Event handlers
-	Children []VNode
+	Events   map[string]js.Func
+	Children []GoatNode
 	Text     string
 	DOMNode  js.Value
 }
 
-func NewVNode(tag string, attrs map[string]string, events map[string]func(js.Value, []js.Value) any, children []VNode, text string) VNode {
-	return VNode{
+func NewGoatNode(tag string, attrs map[string]string, events map[string]js.Func, children []GoatNode, text string) GoatNode {
+	return GoatNode{
 		Tag:      tag,
 		Attrs:    attrs,
 		Events:   events,

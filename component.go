@@ -4,6 +4,4 @@ import (
 	"context"
 )
 
-type Component interface {
-	Render(ctx context.Context, props any) VNode
-}
+type Component func(ctx context.Context, props any) GoatNode
