@@ -17,6 +17,7 @@ func NewRenderer(comp Component, props any) *Renderer {
 	instance := &ComponentInstance{
 		states:     make(map[int]any),
 		stateOrder: []int{},
+		callbacks:  make(map[int]string),
 		callIndex:  0,
 	}
 	r := &Renderer{
