@@ -15,4 +15,8 @@ func RenderRoot(id string, comp Component, props any) {
 	r := NewRenderer(id, comp, props)
 	renderers[id] = r
 	r.Render()
+
+	// Keep Program Running!
+	done := make(chan struct{})
+	<-done
 }
