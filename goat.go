@@ -7,6 +7,7 @@ import (
 	"io"
 	"sync"
 	"syscall/js"
+	"time"
 
 	"github.com/a-h/templ"
 )
@@ -80,7 +81,8 @@ func JSVar(name string, v any) {
 	js.Global().Set(name, js.ValueOf(v))
 }
 
-func Callback(name string, f func(this js.Value, args []js.Value) any) func(args []js.Value) {
+func Callback(f func(this js.Value, args []js.Value) any) func(args []js.Value) {
+	name := fmt.Sprintf("fn%d", time.Now().UnixNano())
 	jsFunc(name, f)
 	return func(args []js.Value) {
 		templ.JSFuncCall(name, args)
