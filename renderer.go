@@ -31,6 +31,9 @@ func NewRenderer(comp Component, props any) *Renderer {
 func (r *Renderer) Render() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	r.instance.mu.Lock()
+	r.instance.callIndex = 0
+	r.instance.mu.Unlock()
 	ctx := context.WithValue(context.Background(), componentInstanceKey, r.instance)
 	js.Global().Get("console").Call("log", "Rerendering")
 	ctx = context.WithValue(ctx, propsKey, r.props) // Add props to context
