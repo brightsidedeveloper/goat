@@ -10,13 +10,3 @@ type GoatNode struct {
 	Text     string
 	DOMNode  js.Value
 }
-
-func NewGoatNode(tag string, attrs map[string]string, events map[string]js.Func, children []GoatNode, text string) GoatNode {
-	return GoatNode{
-		Tag:      tag,
-		Attrs:    attrs,
-		Events:   events,
-		Children: children,
-		Text:     text,
-	}
-}
