@@ -81,14 +81,6 @@ func JSVar(name string, v any) {
 	js.Global().Set(name, js.ValueOf(v))
 }
 
-func Callback(f func(this js.Value, args []js.Value) any) func(args []js.Value) {
-	name := fmt.Sprintf("fn%d", time.Now().UnixNano())
-	jsFunc(name, f)
-	return func(args []js.Value) {
-		templ.JSFuncCall(name, args)
-	}
-}
-
 type Driver struct {
 	id         string
 	states     map[string]any
@@ -157,4 +149,12 @@ func (d *Driver) State(initialValue any) (func() any, func(any)) {
 
 func generateStateKey(driverID string, index int) string {
 	return fmt.Sprintf("%s_state_%d", driverID, index)
+}
+
+func Callback(f func(this js.Value, args []js.Value) any) func(args ...any) templ.ComponentScript {
+	name := fmt.Sprintf("fn%d", time.Now().UnixNano())
+	jsFunc(name, f)
+	return func(args ...any) templ.ComponentScript {
+		return templ.JSFuncCall(name, args)
+	}
 }
