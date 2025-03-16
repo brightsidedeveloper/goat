@@ -30,7 +30,19 @@ func (r *Renderer) Render() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	ctx := context.WithValue(context.Background(), componentInstanceKey, r.instance)
+	ctx = context.WithValue(ctx, propsKey, r.props) // Add props to context
 	doc := js.Global().Get("document")
 	output := doc.Call("getElementById", "root")
 	output.Set("innerHTML", html(r.comp, ctx, r.props))
+}
+
+type propsKeyType struct{}
+
+var propsKey = propsKeyType{}
+
+func GetProps(ctx context.Context) any {
+	if props, ok := ctx.Value(propsKey).(any); ok {
+		return props
+	}
+	panic("No props found in context")
 }
