@@ -35,7 +35,7 @@ func (r *Renderer) Render() {
 	r.instance.callIndex = 0
 	r.instance.mu.Unlock()
 	ctx := context.WithValue(context.Background(), componentInstanceKey, r.instance)
-	ctx = context.WithValue(ctx, propsKey, r.props) // Add props to context
+	ctx = context.WithValue(ctx, propsKey, r.props)
 	doc := js.Global().Get("document")
 	output := doc.Call("getElementById", "root")
 	output.Set("innerHTML", html(r.comp, ctx, r.props))
