@@ -22,7 +22,6 @@ type componentInstanceKeyType struct{}
 
 var componentInstanceKey = componentInstanceKeyType{}
 
-// GetComponentInstance retrieves the ComponentInstance from the context.
 func getInstance(ctx context.Context) *ComponentInstance {
 	if ci, ok := ctx.Value(componentInstanceKey).(*ComponentInstance); ok {
 		return ci
@@ -30,7 +29,15 @@ func getInstance(ctx context.Context) *ComponentInstance {
 	panic("No component instance found in context")
 }
 
-func UseState(ctx context.Context, initialValue any) (func() any, func(any)) {
+var hookContext context.Context
+
+func WithHooks(ctx context.Context, fn func()) {
+	hookContext = ctx
+	fn()
+	hookContext = nil
+}
+
+func useState(ctx context.Context, initialValue any) (func() any, func(any)) {
 	ci := getInstance(ctx)
 	ci.mu.Lock()
 	defer ci.mu.Unlock()
@@ -55,14 +62,21 @@ func UseState(ctx context.Context, initialValue any) (func() any, func(any)) {
 		ci.states[stateKey] = newValue
 		ci.mu.Unlock()
 		if renderer := getRendererForInstance(ci); renderer != nil {
-			go renderer.Render() // Non-blocking re-render
+			go renderer.Render()
 		}
 	}
 
 	return getState, setState
 }
 
-func UseCallback(ctx context.Context, f func(this js.Value, args []js.Value) any) func(args ...any) templ.ComponentScript {
+func UseState(initialValue any) (func() any, func(any)) {
+	if hookContext == nil {
+		panic("UseState must be called within a WithHooks block")
+	}
+	return useState(hookContext, initialValue)
+}
+
+func useCallback(ctx context.Context, f func(this js.Value, args []js.Value) any) func(args ...any) templ.ComponentScript {
 	ci := getInstance(ctx)
 	ci.mu.Lock()
 	defer ci.mu.Unlock()
@@ -85,6 +99,13 @@ func UseCallback(ctx context.Context, f func(this js.Value, args []js.Value) any
 		}
 		return templ.JSFuncCall(name, jsArgs)
 	}
+}
+
+func UseCallback(f func(this js.Value, args []js.Value) any) func(args ...any) templ.ComponentScript {
+	if hookContext == nil {
+		panic("UseCallback must be called within a WithHooks block")
+	}
+	return useCallback(hookContext, f)
 }
 
 func (ci *ComponentInstance) Reset() {
