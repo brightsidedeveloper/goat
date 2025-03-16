@@ -2,11 +2,17 @@ package goat
 
 import (
 	"context"
+	"fmt"
 	"sync"
+	"syscall/js"
+	"time"
+
+	"github.com/a-h/templ"
 )
 
 type ComponentInstance struct {
 	states     map[int]any
+	callbacks  map[int]string
 	stateOrder []int
 	callIndex  int
 	mu         sync.Mutex
@@ -53,4 +59,34 @@ func (ci *ComponentInstance) UseState(initialValue any) (func() any, func(any)) 
 	}
 
 	return getState, setState
+}
+
+func (ci *ComponentInstance) UseCallback(f func(this js.Value, args []js.Value) any) func(args ...any) templ.ComponentScript {
+	ci.mu.Lock()
+	defer ci.mu.Unlock()
+
+	callbackIndex := ci.callIndex
+	ci.callIndex++
+
+	if oldName, exists := ci.callbacks[callbackIndex]; exists {
+		js.Global().Delete(oldName)
+	}
+
+	name := fmt.Sprintf("fn%d_%d", time.Now().UnixNano(), callbackIndex)
+	js.Global().Set(name, js.FuncOf(f))
+	ci.callbacks[callbackIndex] = name
+
+	return func(args ...any) templ.ComponentScript {
+		jsArgs := make([]js.Value, len(args))
+		for i, arg := range args {
+			jsArgs[i] = js.ValueOf(arg)
+		}
+		return templ.JSFuncCall(name, jsArgs)
+	}
+}
+
+func (ci *ComponentInstance) Reset() {
+	ci.mu.Lock()
+	defer ci.mu.Unlock()
+	ci.callIndex = 0
 }

@@ -31,9 +31,7 @@ func NewRenderer(comp Component, props any) *Renderer {
 func (r *Renderer) Render() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.instance.mu.Lock()
-	r.instance.callIndex = 0
-	r.instance.mu.Unlock()
+	r.instance.Reset()
 	ctx := context.WithValue(context.Background(), componentInstanceKey, r.instance)
 	ctx = context.WithValue(ctx, propsKey, r.props)
 	doc := js.Global().Get("document")
