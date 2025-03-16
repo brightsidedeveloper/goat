@@ -6,12 +6,8 @@ import (
 	"syscall/js"
 )
 
-func RenderRoot(j Component, props any) {
-	ci := &ComponentInstance{}
-	ctx := context.WithValue(context.Background(), componentInstanceKey, ci)
-	doc := js.Global().Get("document")
-	output := doc.Call("getElementById", "root")
-	output.Set("innerHTML", html(j, ctx, props))
+func RenderRoot(r *Renderer) {
+	r.Render()
 }
 
 func html(j Component, ctx context.Context, props any) string {
