@@ -32,6 +32,7 @@ func (r *Renderer) Render() {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	ctx := context.WithValue(context.Background(), componentInstanceKey, r.instance)
+	js.Global().Get("console").Call("log", "Rerendering")
 	ctx = context.WithValue(ctx, propsKey, r.props) // Add props to context
 	doc := js.Global().Get("document")
 	output := doc.Call("getElementById", "root")
