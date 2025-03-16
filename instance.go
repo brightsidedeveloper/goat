@@ -23,14 +23,15 @@ type componentInstanceKeyType struct{}
 var componentInstanceKey = componentInstanceKeyType{}
 
 // GetComponentInstance retrieves the ComponentInstance from the context.
-func GetComponentInstance(ctx context.Context) *ComponentInstance {
+func getInstance(ctx context.Context) *ComponentInstance {
 	if ci, ok := ctx.Value(componentInstanceKey).(*ComponentInstance); ok {
 		return ci
 	}
 	panic("No component instance found in context")
 }
 
-func (ci *ComponentInstance) UseState(initialValue any) (func() any, func(any)) {
+func UseState(ctx context.Context, initialValue any) (func() any, func(any)) {
+	ci := getInstance(ctx)
 	ci.mu.Lock()
 	defer ci.mu.Unlock()
 
@@ -61,7 +62,8 @@ func (ci *ComponentInstance) UseState(initialValue any) (func() any, func(any)) 
 	return getState, setState
 }
 
-func (ci *ComponentInstance) UseCallback(f func(this js.Value, args []js.Value) any) func(args ...any) templ.ComponentScript {
+func UseCallback(ctx context.Context, f func(this js.Value, args []js.Value) any) func(args ...any) templ.ComponentScript {
+	ci := getInstance(ctx)
 	ci.mu.Lock()
 	defer ci.mu.Unlock()
 
