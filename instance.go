@@ -47,17 +47,11 @@ func (ci *ComponentInstance) UseState(initialValue any) (func() any, func(any)) 
 		ci.mu.Lock()
 		ci.states[stateKey] = newValue
 		ci.mu.Unlock()
-		// Trigger re-render (placeholder for now)
-		renderer := getRendererForInstance(ci)
-		if renderer != nil {
-			go renderer.Render()
+		// Trigger re-render
+		if renderer := getRendererForInstance(ci); renderer != nil {
+			go renderer.Render() // Non-blocking re-render
 		}
 	}
 
 	return getState, setState
-}
-
-// Temporary placeholder; to be implemented in Step 3
-func getRendererForInstance(ci *ComponentInstance) *Renderer {
-	return nil
 }

@@ -19,11 +19,13 @@ func NewRenderer(comp Component, props any) *Renderer {
 		stateOrder: []int{},
 		callIndex:  0,
 	}
-	return &Renderer{
+	r := &Renderer{
 		instance: instance,
 		comp:     comp,
 		props:    props,
 	}
+	registerRenderer(instance, r)
+	return r
 }
 
 func (r *Renderer) Render() {
