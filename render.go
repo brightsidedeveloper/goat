@@ -3,19 +3,25 @@ package goat
 import (
 	"bytes"
 	"context"
-	"syscall/js"
+	"sync"
 )
 
-func RenderRoot(r *Renderer) {
+var (
+	renderersMu sync.Mutex
+	renderers   = make(map[string]*Renderer)
+)
+
+func RenderRoot(id string, comp Component, props any) {
+	renderersMu.Lock()
+	defer renderersMu.Unlock()
+	r := NewRenderer(id, comp, props)
+	renderers[id] = r
 	r.Render()
 }
 
 func html(j Component, ctx context.Context, props any) string {
+	vdom := j.Render(ctx, props)
 	var buf bytes.Buffer
-	err := j.Render(ctx, &buf, props)
-	if err != nil {
-		js.Global().Get("console").Call("error", "Error rendering template:", err.Error())
-		return ""
-	}
+	buf.WriteString(vdomToHTML(vdom))
 	return buf.String()
 }

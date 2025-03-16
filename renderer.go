@@ -7,13 +7,15 @@ import (
 )
 
 type Renderer struct {
+	id       string
+	vdom     VNode
 	instance *ComponentInstance
 	comp     Component
 	props    any
 	mu       sync.Mutex
 }
 
-func NewRenderer(comp Component, props any) *Renderer {
+func NewRenderer(id string, comp Component, props any) *Renderer {
 	instance := &ComponentInstance{
 		states:     make(map[int]any),
 		stateOrder: []int{},
@@ -24,6 +26,7 @@ func NewRenderer(comp Component, props any) *Renderer {
 		instance: instance,
 		comp:     comp,
 		props:    props,
+		id:       id,
 	}
 	registerRenderer(instance, r)
 	return r
@@ -35,9 +38,30 @@ func (r *Renderer) Render() {
 	r.instance.Reset()
 	ctx := context.WithValue(context.Background(), componentInstanceKey, r.instance)
 	ctx = context.WithValue(ctx, propsKey, r.props)
+	newVdom := r.comp.Render(ctx, r.props)
+	r.updateDOM(newVdom)
+	r.vdom = newVdom
+}
+
+func (r *Renderer) updateDOM(newVdom VNode) {
 	doc := js.Global().Get("document")
-	output := doc.Call("getElementById", "root")
-	output.Set("innerHTML", html(r.comp, ctx, r.props))
+	container := doc.Call("getElementById", r.id)
+	if !container.Truthy() {
+		// Initial render: create the element
+		container = doc.Call("createElement", "div")
+		container.Set("id", r.id)
+		doc.Get("body").Call("appendChild", container)
+	}
+	// For now, just set innerHTML (no diffing yet)
+	html := vdomToHTML(newVdom)
+	container.Set("innerHTML", html)
+}
+
+func vdomToHTML(v VNode) string {
+	if v.Text != "" {
+		return v.Text
+	}
+	return "<div>" + v.Text + "</div>" // Placeholder
 }
 
 type propsKeyType struct{}
