@@ -30,7 +30,7 @@ func getInstance(ctx context.Context) *ComponentInstance {
 	panic("No component instance found in context")
 }
 
-func UseState(ctx context.Context, initialValue any) (func() any, func(any)) {
+func UseState[T any](ctx context.Context, initialValue T) (func() T, func(T)) {
 	ci := getInstance(ctx)
 	ci.mu.Lock()
 	defer ci.mu.Unlock()
@@ -44,18 +44,18 @@ func UseState(ctx context.Context, initialValue any) (func() any, func(any)) {
 	stateKey := ci.stateOrder[ci.callIndex]
 	ci.callIndex++
 
-	getState := func() any {
+	getState := func() T {
 		ci.mu.Lock()
 		defer ci.mu.Unlock()
-		return ci.states[stateKey]
+		return ci.states[stateKey].(T)
 	}
 
-	setState := func(newValue any) {
+	setState := func(newValue T) {
 		ci.mu.Lock()
 		ci.states[stateKey] = newValue
 		ci.mu.Unlock()
 		if renderer := getRendererForInstance(ci); renderer != nil {
-			go renderer.Render() // Non-blocking re-render
+			go renderer.Render()
 		}
 	}
 
@@ -85,6 +85,15 @@ func UseCallback(ctx context.Context, f func(this js.Value, args []js.Value) any
 		}
 		return templ.JSFuncCall(name, jsArgs)
 	}
+}
+
+func UseEffect(ctx context.Context, effect func()) {
+	ci := getInstance(ctx)
+	ci.mu.Lock()
+	defer ci.mu.Unlock()
+
+	// TODO: Queue this to fire after the re-render
+	effect()
 }
 
 func (ci *ComponentInstance) Reset() {
