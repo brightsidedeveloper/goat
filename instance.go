@@ -3,7 +3,6 @@ package goat
 import (
 	"context"
 	"sync"
-	"syscall/js"
 )
 
 type ComponentInstance struct {
@@ -48,8 +47,6 @@ func (ci *ComponentInstance) UseState(initialValue any) (func() any, func(any)) 
 		ci.mu.Lock()
 		ci.states[stateKey] = newValue
 		ci.mu.Unlock()
-		// Trigger re-render
-		js.Global().Get("console").Call("log", "State updated to:", newValue)
 		if renderer := getRendererForInstance(ci); renderer != nil {
 			go renderer.Render() // Non-blocking re-render
 		}
